@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Estadísticas - UrlShortener</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #38bdf8;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            max-width: 800px;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            color: var(--accent);
+            margin-bottom: 30px;
+        }
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        input {
+            flex: 1;
+            padding: 14px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            background-color: var(--card-bg);
+            color: white;
+            font-size: 16px;
+        }
+        button {
+            padding: 14px 28px;
+            border-radius: 8px;
+            border: none;
+            background-color: var(--accent);
+            color: var(--bg-color);
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        button:hover { opacity: 0.9; }
+        .dashboard {
+            display: none;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            text-align: center;
+        }
+        .card h3 { margin: 0 0 10px 0; color: var(--text-muted); font-size: 14px; text-transform: uppercase; }
+        .card p { margin: 0; font-size: 28px; font-weight: bold; color: var(--accent); }
+        .url-box {
+            background-color: var(--card-bg);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            word-break: break-all;
+            border-left: 4px solid var(--accent);
+        }
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .history-table th, .history-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #334155;
+        }
+        .history-table th { background-color: #334155; color: var(--accent); }
+        .error { color: #f87171; text-align: center; display: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📊 Dashboard de Analítica</h1>
+    
+    <div class="search-box">
+        <input type="text" id="shortCodeInput" placeholder="Introduce el código corto (ej. mXJUxN)">
+        <button onclick="fetchStats()">Consultar</button>
+    </div>
+
+    <p id="errorMessage" class="error"></p>
+
+    <div id="dashboardView">
+        <div class="dashboard">
+            <div class="card">
+                <h3>Total Visitas</h3>
+                <p id="totalClicks">0</p>
+            </div>
+            <div class="card">
+                <h3>Código</h3>
+                <p id="statCode">-</p>
+            </div>
+            <div class="card">
+                <h3>Creado el</h3>
+                <p id="createdAt" style="font-size: 20px; padding-top: 8px;">-</p>
+            </div>
+        </div>
+
+        <h3 class="sections" id="titleUrl" style="display:none;">URL Original Destino:</h3>
+        <div id="longUrlBox" class="url-box" style="display:none;"></div>
+
+        <h3 class="sections" id="titleTable" style="display:none;">Historial de Clicks por Día:</h3>
+        <table class="history-table" id="statsTable" style="display:none;">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Cantidad de Visitas</th>
+                </tr>
+            </thead>
+            <tbody id="statsTableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // COLOCA AQUÍ LA URL BASE QUE TE DIO TU API DE ESTADÍSTICAS (MÓDULO 3) Terminado en /stats/
+    const API_STATS_URL = "https://2lcdtko3ti.execute-api.us-east-1.amazonaws.com/stats/";
+
+    async function fetchStats() {
+        const code = document.getElementById('shortCodeInput').value.trim();
+        const errorMsg = document.getElementById('errorMessage');
+        const table = document.getElementById('statsTable');
+        const tableBody = document.getElementById('statsTableBody');
+        const longUrlBox = document.getElementById('longUrlBox');
+        
+        // Reset Views
+        errorMsg.style.display = "none";
+        
+        if(!code) {
+            alert("Por favor ingresa un código.");
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_STATS_URL}${code}`);
+            if (!response.ok) throw new Error("Código no encontrado o error del servicio.");
+            
+            const data = await response.json();
+            
+            // Rellenar datos en las tarjetas
+            document.getElementById('totalClicks').innerText = data.total_clicks;
+            document.getElementById('statCode').innerText = data.short_code;
+            document.getElementById('createdAt').innerText = data.created_at || 'N/A';
+            
+            longUrlBox.innerText = data.long_url;
+            longUrlBox.style.display = "block";
+            document.getElementById('titleUrl').style.display = "block";
+            document.getElementById('dashboardView').children[0].style.display = "grid";
+
+            // Limpiar e iterar el mapa de analíticas diarias
+            tableBody.innerHTML = "";
+            const dates = Object.keys(data.clicks_by_day);
+            
+            if(dates.length > 0) {
+                dates.forEach(date => {
+                    const row = `<tr><td>${date}</td><td>${data.clicks_by_day[date]}</td></tr>`;
+                    tableBody.innerHTML += row;
+                });
+                table.style.display = "table";
+                document.getElementById('titleTable').style.display = "block";
+            } else {
+                tableBody.innerHTML = "<tr><td colspan='2'>No hay registros de clicks en fechas específicas aún.</td></tr>";
+                table.style.display = "table";
+            }
+
+        } catch (error) {
+            errorMsg.innerText = error.message;
+            errorMsg.style.display = "block";
+            // Ocultar vistas de éxito
+            table.style.display = "none";
+            longUrlBox.style.display = "none";
+            document.getElementById('titleUrl').style.display = "none";
+            document.getElementById('titleTable').style.display = "none";
+            document.getElementById('dashboardView').children[0].style.display = "none";
+        }
+    }
+</script>
+</body>
+</html>
